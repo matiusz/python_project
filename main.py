@@ -10,6 +10,8 @@ import math
 import unicodedata
 from openpyxl import *
 import collections
+import datetime
+import time
 
 class Room:
     @staticmethod
@@ -17,17 +19,45 @@ class Room:
         room = Room("", "")
         room.classes = []
         return room
+    def printRoomTable(self):
+        blocks = []
+        weekdays = ["Pn", "Wt", "Sr", "Cz", "Pt"]
+        blocks.append((datetime.time(8,0,0), datetime.time(9,30,0), "8.00"))
+        blocks.append((datetime.time(9,35,0), datetime.time(11,5,0), "9.35"))
+        blocks.append((datetime.time(11,15,0), datetime.time(12,45,0), "11.15"))
+        blocks.append((datetime.time(12,50,0), datetime.time(14,20,0), "12.50"))
+        blocks.append((datetime.time(14,40,0), datetime.time(16,10,0), "14.40"))
+        blocks.append((datetime.time(16,15,0), datetime.time(17,45,0), "16.15"))
+        blocks.append((datetime.time(17,50,0), datetime.time(19,20,0), "17.50"))
+        blocks.append((datetime.time(19,30,0),datetime.time(21,0,0), "19.30"))
+        print("\t", end = "\t|")
+        for day in weekdays:
+            print(day, end="\t|")
+        print("")
+        #print("-----------------------------")
+        for i in range(8):
+            print(blocks[i][2], end="\t| ")
+            for day in weekdays:
+                print(self.isTaken(day, blocks[i][0], blocks[i][1]), end="\t| ")
+            print("")
+            #print("-----------------------------")
+    def isTaken(self, day, timeStart, timeEnd):
+        for clas in self.classes:
+            if (clas.day == day):
+                if (clas.hourStart==""):
+                    continue
+                if ((timeStart <= clas.hourStart <= timeEnd)):
+                    return clas.week or "X"
+        return ""
     @staticmethod
     def findByString(roomString, RoomsList):
         roomStringList = roomString.split()
-        if(len(roomStringList)<2):
+        if (len(roomStringList)<2):
             return Room.DeadRoom()
         for room in RoomsList:
             if(room.building==roomStringList[0]):
                 if(room.number==roomStringList[1]):
                     return room
-        #TODO remove prints
-        #print("Room not found")
         return Room.DeadRoom()
     def __init__(self, Building, Number):
         if (Building != None):
@@ -300,30 +330,61 @@ def distance(a,b):
             if a[j-1] != b[i-1]:
                 change = change + 1
             current[j] = min(add, delete, change)
-
     return current[n]
+
+
+def getRoom(arg, RoomsList):
+    suggestions = []
+    for room in RoomsList:
+        if (room.building=="D17"):
+            if (room.number==arg):
+                room.printRoomTable()
+                return room
+            else:
+                if (distance(arg, room.number)<=1):
+                    suggestions.append(room)
+    suggs = []
+    for suggestion in suggestions:
+        if (len(suggestion.number)==5):
+            suggs.append(suggestion)
+    if (suggs!=[]):
+        suggestions = suggs
+    suggestionsEnumerated = list(enumerate(suggestions, 1))
+    if (suggestions == None):
+        print("Nie znaleziono podanej sali")
+    else:
+        for index, suggestion in suggestionsEnumerated:
+            print(str(index) + ": " + suggestion.number)
+        print("Wprowadź numer odpowiadający sali")
+        i = int(input())
+        if i <= len(suggestions) and i > 0:
+            suggestionsEnumerated[i-1][1].printRoomTable()
 
 
 
 def Main():
+    print("Parsing data...")
     data = Parser.ParseAll()
+    print("Parsing completed")
+    print(">>", end='')
     input1 = input()
     print(input1)
     split_input =  input1.split(" ", 1)
     function = split_input[0]
-    arg = split_input[1]
+    if (len(split_input)>1):
+        arg = split_input[1]
+    else:
+        print("osoba [Nazwisko] ")
     while function.lower() != "stop":
         if function.lower() == "osoba":
             getPerson(arg, data[0])
+        if function.lower() == "sala":
+            getRoom(arg, data[1])
         input1 = input()
         print(input1)
         split_input =  input1.split(" ", 1)
         function = split_input[0]
         arg = split_input[1]
-
-    exRoom = Room.findByString("D17 4.30", data[1])
-    #for rooms in RoomsList:
-    #printPersonData(Person.findByName("Gajęcki", "Marek", data[0]))
 
 if __name__=="__main__":
     Main()
