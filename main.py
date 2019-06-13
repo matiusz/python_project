@@ -74,20 +74,50 @@ class Room:
 class Person:
     @staticmethod
     def findSimiliarNames(string, PersonList, n=5):
-        suggestedNames = []
-        for persons in PersonList:
-            if(distance(string, persons.lastname+" "+persons.firstname) == 0 or distance(string, persons.firstname+" "+persons.lastname) == 0):
-                print(persons.lastname+" "+persons.firstname)
-                return [(1, persons)]
-            if(distance(string, persons.lastname+" "+persons.firstname)<=n or distance(string, persons.firstname+" "+persons.lastname)<=n):
-                suggestedNames.append(persons)
-            if(distance(string, persons.lastname) <= 2): #
-                suggestedNames.append(persons)
-        if suggestedNames!=[]:
+        
+        suggestedExactNames = [] #exact matches
+        suggestedSimilarNames = [] #not exact matches
+        split_string = string.split(" ")
+        if len(split_string) == 1:
+            for persons in PersonList:
+                if string == persons.lastname[:len(string)]:
+                    suggestedExactNames.append(persons)
+                    continue
+                if(distance(string, persons.lastname) <= 2): # Similar lastnames but not exact     
+                    if(distance(string, persons.lastname) == 0): # Exact lastnames, check for similar firstnames
+                        suggestedExactNames.append(persons)
+                    else:
+                        suggestedSimilarNames.append(persons)
+        else:
+
+            for persons in PersonList:
+                if(distance(string, persons.lastname+" "+persons.firstname) == 0 or distance(string, persons.firstname+" "+persons.lastname) == 0): # Exact match
+                    return [(1, persons)]
+                if distance(split_string[0], persons.lastname) == 0:
+                    if split_string[1] == persons.firstname[:len(split_string[1])]: #Exact lastname, exact beginning of firstname
+                        suggestedExactNames.append(persons)
+                        continue
+                    if(distance(split_string[1], persons.firstname) <= 2): # Similar firstnames but not exact     
+                        suggestedSimilarNames.append(persons)
+                        continue
+                if distance(split_string[0], persons.firstname) == 0:
+                    if split_string[1] == persons.lastname[:len(split_string[1])]: #Exact lastname, exact beginning of firstname
+                        suggestedExactNames.append(persons)
+                        continue
+                    if(distance(split_string[1], persons.lastname) <= 2): # Similar firstnames but not exact     
+                        suggestedSimilarNames.append(persons)
+                        continue
+                if(distance(string, persons.lastname+" "+persons.firstname)<=n or distance(string, persons.firstname+" "+persons.lastname)<=n): # Similar match
+                    suggestedSimilarNames.append(persons)
+                
+        if suggestedExactNames != []:
+
             #print("Did you mean:")
-            for i, suggestion in enumerate(suggestedNames, 1):
+            #for i, suggestion in enumerate(suggestedNames, 1):
                 #print(str(i) + ": " + suggestion.lastname+" "+suggestion.firstname)
-                return list(enumerate(suggestedNames, 1))
+            return list(enumerate(suggestedExactNames, 1))
+        if suggestedSimilarNames != []:
+            return list(enumerate(suggestedSimilarNames, 1))
 
     @staticmethod
     def DeadPerson():
@@ -103,7 +133,7 @@ class Person:
                     return person
         #TODO remove prints
         #print("Person not found")
-        Person.findSimiliarNames(LastName+" "+FirstName, PersonList)
+        #Person.findSimiliarNames(LastName+" "+FirstName, PersonList)
         return Person.DeadPerson()
     def __init__(self, LastName, FirstName):
         self.firstname = FirstName
@@ -240,8 +270,8 @@ class Parser:
         
 def printPersonData(person):
     print("\n" + str(person))
-    print("Kontakt: " + person.email)
-    print("Konsultacje: " + (person.room or "")+ " " + (person.day or "")+ " " + str(person.time or "") +"\n")
+    print("Kontakt: " + (person.email or ""))
+    print("Konsultacje: " + (person.room or "")+ " " + (person.day or "")+ " " + str(person.time or ""))
     print("Prowadzone zajęcia: ")
     classes_monday = []
     classes_tuesday = []
@@ -264,39 +294,39 @@ def printPersonData(person):
             classes_friday.append(classes)
         else:
             classes_other.append(classes)
-    print("\nPoniedziałek:\n")
+    print("\tPoniedziałek:")
     if classes_monday == []:
             print("Brak zajęć")
     else:
         for classes in classes_monday:
             print(classes.subject + " " + str(classes.classroom) + " " + str(classes.hourStart))
-    print("\nWtorek:\n")
+    print("\tWtorek:")
     if classes_tuesday == []:
             print("Brak zajęć")
     else:
         for classes in classes_tuesday:
             print(classes.subject + " " + str(classes.classroom) + " " + str(classes.hourStart))
-    print("\nŚroda:\n")
+    print("\tŚroda:")
     if classes_wednesday == []:
             print("Brak zajęć")
     else:
         for classes in classes_wednesday:
             print(classes.subject + " " + str(classes.classroom) + " " + str(classes.hourStart))
-    print("\nCzwartek:\n")
+    print("\tCzwartek:")
     if classes_thursday == []:
             print("Brak zajęć")
     else:
         for classes in classes_thursday:
             print(classes.subject + " " + str(classes.classroom) + " " + str(classes.hourStart))
-    print("\nPiątek:\n")
+    print("\tPiątek:")
     if classes_friday == []:
             print("Brak zajęć")
     else:
         for classes in classes_friday:
             print(classes.subject + " " + str(classes.classroom) + " " + str(classes.hourStart))
-    print("\nPozostałe:\n")
+    print("\tPozostałe:")
     if classes_other == []:
-            print("Brak zajęć" + "\n")
+            print("Brak zajęć")
     else:
         for classes in classes_other:
             print(classes.subject + " " + str(classes.classroom) + " " + classes.day + " " + str(classes.hourStart))
