@@ -15,10 +15,12 @@ import time
 
 class Room:
     @staticmethod
+    #Make a room object with all fields empty - used to avoid crashes when handling the object
     def DeadRoom():
         room = Room("", "")
         room.classes = []
         return room
+    #print the table of classroom reservations per day and time
     def printRoomTable(self):
         blocks = []
         weekdays = ["Pn", "Wt", "Sr", "Cz", "Pt"]
@@ -41,6 +43,7 @@ class Room:
                 print(self.isTaken(day, blocks[i][0], blocks[i][1]), end="\t| ")
             print("")
             #print("-----------------------------")
+    #given day and time range, returns X if the classroom is reserved in that time
     def isTaken(self, day, timeStart, timeEnd):
         for clas in self.classes:
             if (clas.day == day):
@@ -50,6 +53,7 @@ class Room:
                     return clas.week or "X"
         return ""
     @staticmethod
+    #return the room given string of "[building] [number]"
     def findByString(roomString, RoomsList):
         roomStringList = roomString.split()
         if (len(roomStringList)<2):
@@ -71,8 +75,11 @@ class Room:
             self.number = ""
     def __str__(self):
         return(self.building+" "+self.number)
+
+
 class Person:
     @staticmethod
+    #returns list of Persons with names similiar to name given
     def findSimiliarNames(string, PersonList, n=5):
         
         suggestedExactNames = [] #exact matches
@@ -83,13 +90,13 @@ class Person:
                 if string == persons.lastname[:len(string)]:
                     suggestedExactNames.append(persons)
                     continue
-                if(distance(string, persons.lastname) <= 2): # Similar lastnames but not exact     
-                    if(distance(string, persons.lastname) == 0): # Exact lastnames, check for similar firstnames
+                dist = distance(string, persons.lastname)
+                if(dist <= 2): # Similar lastnames but not exact
+                    if(dist == 0): # Exact lastnames, check for similar firstnames
                         suggestedExactNames.append(persons)
                     else:
                         suggestedSimilarNames.append(persons)
         else:
-
             for persons in PersonList:
                 if(distance(string, persons.lastname+" "+persons.firstname) == 0 or distance(string, persons.firstname+" "+persons.lastname) == 0): # Exact match
                     return [(1, persons)]
@@ -109,31 +116,25 @@ class Person:
                         continue
                 if(distance(string, persons.lastname+" "+persons.firstname)<=n or distance(string, persons.firstname+" "+persons.lastname)<=n): # Similar match
                     suggestedSimilarNames.append(persons)
-                
         if suggestedExactNames != []:
-
-            #print("Did you mean:")
-            #for i, suggestion in enumerate(suggestedNames, 1):
-                #print(str(i) + ": " + suggestion.lastname+" "+suggestion.firstname)
             return list(enumerate(suggestedExactNames, 1))
         if suggestedSimilarNames != []:
             return list(enumerate(suggestedSimilarNames, 1))
 
     @staticmethod
+    #returns Person object with emmpty fields
     def DeadPerson():
         person = Person("", "")
         person.degree = ""
         person.classes = []
         return person
     @staticmethod
+    #returns Person given it's exact first and last name
     def findByName(LastName, FirstName, PersonList):
         for person in PersonList:
             if(LastName==person.lastname):
                 if (FirstName==person.firstname):
                     return person
-        #TODO remove prints
-        #print("Person not found")
-        #Person.findSimiliarNames(LastName+" "+FirstName, PersonList)
         return Person.DeadPerson()
     def __init__(self, LastName, FirstName):
         self.firstname = FirstName
@@ -142,6 +143,8 @@ class Person:
         self.classes = []
     def __str__(self):
         return(self.firstname+" "+self.lastname+", "+self.degree)
+
+
 class Classes:
     def __init__(self, Subject):
         self.subject = Subject
@@ -149,6 +152,7 @@ class Classes:
         return(self.subject+", "+str(self.person)+", "+str(self.classroom)+", "+self.day+" "+str(self.hourStart))
 class Parser:
     @staticmethod
+    #returns a list of Person objects from a given sheet
     def ParsePersons(persons):
         PersonList = []
         for row in persons.iter_rows(min_row=2):
@@ -166,11 +170,8 @@ class Parser:
             person.room = row[8].value
             person.day = row[9].value
             person.time = row[10].value
-        for x in PersonList:
-            #TODO remove prints
-            #print(x)
-            pass
         return PersonList
+    #returns a list of classroom objects from a given sheet
     def ParseClassroom(classrooms):
         RoomsList = []
         for row in classrooms.iter_rows(min_row=2):
@@ -181,11 +182,8 @@ class Parser:
             classroom.type = row[2].value
             classroom.capacity = row[3].value
             classroom.notes = row[4].value
-        for x in RoomsList:
-            #TODO remove prints
-            #print(x)
-            pass
         return RoomsList
+    #returns a list of classes from a given sheet, adds them to matching persons and romm from the given lists
     def ParseSchedule(PersonList, RoomsList, sheet):
         ClassesList = []
         for row in sheet.iter_rows(min_row=2):
@@ -246,26 +244,51 @@ class Parser:
             classes.day = row[13].value or ""
             classes.hourStart = row[14].value or ""
             classes.hourEnd = row[15].value or ""
-        for x in ClassesList:
-            #TODO remove prints
-            #print(x)
-            pass
         return ClassesList
     @staticmethod
-    def ParseAll(filename = '2019-2020(6) (1).xlsx'):
+    #load a file, parse all fields
+    def ParseOther(RoomsList, sheet):
+        OtherList = []
+        for row in sheet.iter_rows(min_row=2):
+            classes = Classes(row[1].value)
+            OtherList.append(classes)
+            classroomString = row[2].value
+            if (classroomString!=None):
+                classes.classroom = Room.findByString(classroomString, RoomsList)
+                classes.classroom.classes.append(classes)
+            classes.week = ""
+            classes.type = "Other"
+            classes.person = Person.DeadPerson()
+            classes.day = row[3].value or ""
+            classes.hourStart = row[4].value or ""
+            classes.hourEnd = row[5].value or ""
+        return OtherList
+
+
+    def ParseAll(filename = '2019-2020(6) (1).xlsx', option = "oba"):
         workbook = load_workbook(filename)
         personsSheet = workbook["osoby"]
         roomsSheet = workbook["sale"]
         PersonsList = Parser.ParsePersons(personsSheet)
         RoomsList = Parser.ParseClassroom(roomsSheet)
-        WinterSList = Parser.ParseSchedule(PersonsList, RoomsList, workbook["zima_s"])
-        SummerSList = Parser.ParseSchedule(PersonsList, RoomsList, workbook["lato_s"])
-        WinterNList = Parser.ParseSchedule(PersonsList, RoomsList, workbook["zima_n"])
-        SummerNList = Parser.ParseSchedule(PersonsList, RoomsList, workbook["lato_n"])
-        AllClasses = WinterSList+SummerSList+WinterNList+SummerNList
-
+        OthersWinterList = []
+        OthersSummerList = []
+        if (option == "oba" or option == "zima"):
+            OthersWinterList = Parser.ParseOther(RoomsList, workbook["zima_inne"])
+        if (option == "oba" or option == "lato"):
+            OthersSummerList = Parser.ParseOther(RoomsList, workbook["lato_inne"])
+        SummerNList = []
+        SummerSList = []
+        WinterNList = []
+        WinterSList = []
+        if (option == "oba" or option == "lato"):
+            SummerSList = Parser.ParseSchedule(PersonsList, RoomsList, workbook["lato_s"])
+            SummerNList = Parser.ParseSchedule(PersonsList, RoomsList, workbook["lato_n"])
+        if (option == "oba" or option == "zima"):
+            WinterNList = Parser.ParseSchedule(PersonsList, RoomsList, workbook["zima_n"])
+            WinterSList = Parser.ParseSchedule(PersonsList, RoomsList, workbook["zima_s"])
+        AllClasses = WinterSList+SummerSList+WinterNList+SummerNList+OthersSummerList+OthersWinterList
         return (PersonsList, RoomsList, AllClasses) # check if tuple order matches
-        #Person.findSimiliarNames("Alda Witold", PersonsList, 5)
 
         
 def printPersonData(person):
@@ -345,7 +368,7 @@ def getPerson(arg, PersonsList):
         i = int(input())
         if i <= len(suggestions) and i > 0:
             printPersonData(suggestions[i-1][1])
-
+#calculete Levenstein's distance
 def distance(a,b):
     n, m = len(a), len(b)
     if n > m:
@@ -393,32 +416,31 @@ def getRoom(arg, RoomsList):
 
 
 def Main():
-    print("Parsing data...")
-    data = Parser.ParseAll()
-    print("Parsing completed")
+    print("Opcje: \noba - załaduj wszytkie zajęcia\nlato - załaduj semestr letni\nzima - załaduj semestr zimowy")
     print(">>", end='')
     input1 = input()
-    print(input1)
+    print("Parsowanie danych...")
+    data = Parser.ParseAll(option = input1)
+    print("Parsowanie ukończone")
+    print(">>", end='')
+    input1 = input()
     split_input =  input1.split(" ", 1)
     function = split_input[0]
     if (len(split_input)>1):
         arg = split_input[1]
     else:
         print("osoba [Nazwisko] ")
+        print("sala [Numer sali]")
     while function.lower() != "stop":
         if function.lower() == "osoba":
             getPerson(arg, data[0])
         if function.lower() == "sala":
             getRoom(arg, data[1])
+        print(">>", end='')
         input1 = input()
-        print(input1)
         split_input =  input1.split(" ", 1)
         function = split_input[0]
         arg = split_input[1]
 
 if __name__=="__main__":
     Main()
-
-
-
-
